@@ -1,8 +1,16 @@
 # 🤖 AI Customer Support Agent
 
-An intelligent customer support agent built with OpenAI's function calling capabilities. The agent can understand natural language queries, decide which actions to take, execute those actions, and respond conversationally.
+An intelligent customer support agent built with OpenAI's function calling capabilities, deployed as a serverless application on AWS.
 
 **This project demonstrates core AI agent concepts used in production systems at companies like Sierra, Intercom, and others.**
+
+## 🌐 Live Demo
+
+```bash
+curl -X POST https://8foml1e4r9.execute-api.us-east-1.amazonaws.com \
+  -H 'Content-Type: application/json' \
+  -d '{"message": "What are your store hours?"}'
+```
 
 ## Features
 
@@ -20,6 +28,12 @@ An intelligent customer support agent built with OpenAI's function calling capab
 - **RESTful API**: FastAPI-based web server with auto-generated docs
 - **Conversation Persistence**: Track and manage multiple concurrent conversations
 - **Tool Tracking**: See which functions the agent called for each response
+
+### Cloud Infrastructure (AWS)
+- **AWS Lambda**: Serverless compute for the agent
+- **API Gateway**: HTTP API with CORS support
+- **DynamoDB**: NoSQL database for conversation persistence
+- **IAM**: Secure role-based access control
 
 ## How It Works
 
@@ -106,12 +120,57 @@ Agent: You can return any item within 30 days of delivery for a full refund.
 
 ```
 ai-support-agent/
-├── agent.py         # Core agent logic with OpenAI function calling
-├── api.py           # FastAPI web server with REST endpoints
-├── database.py      # Mock database for orders, products, FAQs
-├── main.py          # Interactive CLI interface
-├── requirements.txt # Python dependencies
-└── README.md        # Documentation
+├── agent.py           # Core agent logic with OpenAI function calling
+├── api.py             # FastAPI web server (local development)
+├── lambda_handler.py  # AWS Lambda handler (production)
+├── database.py        # Mock database for orders, products, FAQs
+├── main.py            # Interactive CLI interface
+├── deploy.sh          # AWS deployment automation script
+├── requirements.txt   # Python dependencies
+└── README.md          # Documentation
+```
+
+## AWS Deployment
+
+Deploy to AWS Lambda with one command:
+
+```bash
+# Set your OpenAI API key
+export OPENAI_API_KEY=your-key-here
+
+# Deploy
+./deploy.sh
+```
+
+This creates:
+- **Lambda Function**: `ai-support-agent`
+- **DynamoDB Table**: `ai-support-conversations`
+- **API Gateway**: HTTP API with public endpoint
+- **IAM Role**: Secure permissions for Lambda
+
+### Architecture
+
+```
+User Request
+     │
+     ▼
+┌─────────────────┐
+│   API Gateway   │  ← HTTP endpoint
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  AWS Lambda     │  ← Serverless compute
+│  (Python 3.11)  │
+└────────┬────────┘
+         │
+    ┌────┴────┐
+    │         │
+    ▼         ▼
+┌────────┐ ┌──────────┐
+│OpenAI  │ │DynamoDB  │
+│  API   │ │(persist) │
+└────────┘ └──────────┘
 ```
 
 ## API Endpoints
