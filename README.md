@@ -2,13 +2,24 @@
 
 An intelligent customer support agent built with OpenAI's function calling capabilities. The agent can understand natural language queries, decide which actions to take, execute those actions, and respond conversationally.
 
+**This project demonstrates core AI agent concepts used in production systems at companies like Sierra, Intercom, and others.**
+
 ## Features
 
+### Core Capabilities
 - **Order Tracking**: Look up order status, items, and delivery estimates
 - **Refund Processing**: Handle refund requests with confirmation flows
 - **FAQ Handling**: Answer common questions about shipping, returns, and payments
+- **Product Search**: Find products by keyword, category, or price
+- **Callback Scheduling**: Book calls with human support agents
+- **Store Information**: Get business hours, locations, and contact details
+
+### Technical Features
 - **Multi-turn Conversations**: Maintains context across multiple messages
 - **Function Calling**: Uses OpenAI's function calling for reliable action execution
+- **RESTful API**: FastAPI-based web server with auto-generated docs
+- **Conversation Persistence**: Track and manage multiple concurrent conversations
+- **Tool Tracking**: See which functions the agent called for each response
 
 ## How It Works
 
@@ -96,10 +107,40 @@ Agent: You can return any item within 30 days of delivery for a full refund.
 ```
 ai-support-agent/
 ├── agent.py         # Core agent logic with OpenAI function calling
-├── database.py      # Mock database for orders and FAQs
+├── api.py           # FastAPI web server with REST endpoints
+├── database.py      # Mock database for orders, products, FAQs
 ├── main.py          # Interactive CLI interface
 ├── requirements.txt # Python dependencies
 └── README.md        # Documentation
+```
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/` | Health check |
+| POST | `/chat` | Send message to agent |
+| GET | `/conversations` | List all conversations |
+| GET | `/conversations/{id}` | Get conversation details |
+| DELETE | `/conversations/{id}` | Delete a conversation |
+
+### Example API Request
+
+```bash
+curl -X POST http://localhost:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Show me running shoes under $150"}'
+```
+
+### Example Response
+
+```json
+{
+  "response": "I found Running Shoes Pro for $129.99...",
+  "conversation_id": "abc123",
+  "tools_used": ["search_products"],
+  "timestamp": "2026-01-03T12:00:00"
+}
 ```
 
 ## Technical Details

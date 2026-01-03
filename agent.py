@@ -10,7 +10,15 @@ This is the core of our agent. It:
 
 import json
 from openai import OpenAI
-from database import lookup_order, process_refund, get_faq
+from database import (
+    lookup_order, 
+    process_refund, 
+    get_faq,
+    search_products,
+    get_available_callback_slots,
+    schedule_callback,
+    get_store_info
+)
 
 
 class CustomerSupportAgent:
@@ -29,20 +37,24 @@ class CustomerSupportAgent:
         self.conversation_history = []
         
         # System prompt: This tells the AI how to behave
-        self.system_prompt = """You are a friendly and helpful customer support agent for an online store.
+        self.system_prompt = """You are a friendly and helpful customer support agent for TechStyle Store.
 
-Your job is to:
-- Help customers track their orders
-- Process refund requests
-- Answer common questions about shipping, returns, and payments
+Your capabilities:
+- Track orders and process refunds
+- Search products and provide recommendations
+- Schedule callbacks with human support
+- Answer questions about store hours, locations, and policies
 
 Guidelines:
 - Be warm, professional, and empathetic
 - Keep responses concise but helpful
 - If you can't help with something, offer to connect them with a human agent
-- Always confirm actions before taking them (like processing refunds)
+- Always confirm actions before taking them (like processing refunds or scheduling callbacks)
+- When searching products, highlight key features and availability
 
-Available order IDs for testing: 12345, 67890, 11111"""
+Available test data:
+- Order IDs: 12345, 67890, 11111
+- Products: clothing, footwear, electronics, accessories"""
         
         # Define the tools (functions) the agent can use
         # This is the key part that makes it an "agent" - it can take actions!
@@ -101,6 +113,94 @@ Available order IDs for testing: 12345, 67890, 11111"""
                         "required": ["topic"]
                     }
                 }
+            },
+            # NEW TOOL: Product Search
+            {
+                "type": "function",
+                "function": {
+                    "name": "search_products",
+                    "description": "Search for products by keyword, category, or price. Use this when customers ask about products, want recommendations, or are looking for something specific.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "type": "string",
+                                "description": "Search keywords (e.g., 'running shoes', 'headphones', 'jacket')"
+                            },
+                            "category": {
+                                "type": "string",
+                                "description": "Product category filter (clothing, footwear, electronics, accessories)",
+                                "enum": ["clothing", "footwear", "electronics", "accessories"]
+                            },
+                            "max_price": {
+                                "type": "number",
+                                "description": "Maximum price filter"
+                            }
+                        },
+                        "required": []
+                    }
+                }
+            },
+            # NEW TOOL: Get Callback Slots
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_available_callback_slots",
+                    "description": "Get available time slots for scheduling a callback with human support. Use this when a customer wants to speak with someone or schedule a call.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {},
+                        "required": []
+                    }
+                }
+            },
+            # NEW TOOL: Schedule Callback
+            {
+                "type": "function",
+                "function": {
+                    "name": "schedule_callback",
+                    "description": "Schedule a callback with customer support. Only call this after the customer has confirmed the time slot.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "date": {
+                                "type": "string",
+                                "description": "The date for the callback (format: YYYY-MM-DD)"
+                            },
+                            "time": {
+                                "type": "string",
+                                "description": "The time for the callback (e.g., '10:00 AM')"
+                            },
+                            "phone_number": {
+                                "type": "string",
+                                "description": "Customer's phone number"
+                            },
+                            "reason": {
+                                "type": "string",
+                                "description": "Brief description of why they want the callback"
+                            }
+                        },
+                        "required": ["date", "time", "phone_number", "reason"]
+                    }
+                }
+            },
+            # NEW TOOL: Store Info
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_store_info",
+                    "description": "Get store information like business hours, store locations, or contact details",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "info_type": {
+                                "type": "string",
+                                "description": "Type of information needed (hours, locations, contact)"
+                            }
+                        },
+                        "required": ["info_type"]
+                    }
+                }
             }
         ]
     
@@ -109,13 +209,42 @@ Available order IDs for testing: 12345, 67890, 11111"""
         Execute a function and return the result as a string.
         
         This is where the agent actually DOES things, not just talks.
+        The agent has decided what action to take, now we execute it.
         """
+        # Order management
         if function_name == "lookup_order":
             result = lookup_order(arguments["order_id"])
+        
         elif function_name == "process_refund":
             result = process_refund(arguments["order_id"], arguments["reason"])
+        
+        # Information retrieval
         elif function_name == "get_faq":
             result = get_faq(arguments["topic"])
+        
+        elif function_name == "get_store_info":
+            result = get_store_info(arguments["info_type"])
+        
+        # Product search
+        elif function_name == "search_products":
+            result = search_products(
+                query=arguments.get("query", ""),
+                category=arguments.get("category"),
+                max_price=arguments.get("max_price")
+            )
+        
+        # Callback scheduling
+        elif function_name == "get_available_callback_slots":
+            result = get_available_callback_slots()
+        
+        elif function_name == "schedule_callback":
+            result = schedule_callback(
+                date=arguments["date"],
+                time=arguments["time"],
+                phone_number=arguments["phone_number"],
+                reason=arguments["reason"]
+            )
+        
         else:
             result = {"error": f"Unknown function: {function_name}"}
         
